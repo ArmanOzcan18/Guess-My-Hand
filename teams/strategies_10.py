@@ -1,192 +1,132 @@
 import random
 from CardGame import Card
 from copy import copy
-
-random_seeds = random.sample(range(100), 13)
-number_of_groups = 4
 PARTNERS = {
     'North': 'South',
-    'East': 'West',
     'South': 'North',
-    'West': 'East',
-}
-cards = None
-suit_to_idx = {"Hearts": 0, "Diamonds": 1, "Clubs": 2, "Spades": 3}
-value_to_idx = {
-    "2": 0,
-    "3": 1,
-    "4": 2,
-    "5": 3,
-    "6": 4,
-    "7": 5,
-    "8": 6,
-    "9": 7,
-    "10": 8,
-    "J": 9,
-    "Q": 10,
-    "K": 11,
-    "A": 12,
+    'East': 'West',
+    'West': 'East'
 }
 
+# Helper function to define suit pair opposites
+def get_opposite_suit(suit):
+    suit_pairs = {
+        "Spades": "Hearts",
+        "Hearts": "Spades",
+        "Clubs": "Diamonds",
+        "Diamonds": "Clubs"
+    }
+    return suit_pairs[suit]
 
-def convert_card_to_index(card):
-    """
-    Convert Card object to an index ranking by value then suit
-    """
-    suit_idx = suit_to_idx[card.suit]
-    value_idx = value_to_idx[card.value]
-            
-    return value_idx * 4 + suit_idx
+# Helper function to categorize card values into groups
+def get_card_value_group(value):
+    high_cards = ["A", "K", "Q"]
+    mid_cards = ["J", "10", "9", "8"]
+    low_cards = ["7", "6", "5", "4", "3", "2"]
 
-def convert_list_of_cards_to_list_of_indices(list_of_cards):
-    """
-    Convert Card object to an index ranking by value then suit
-    """
-    return [convert_card_to_index(card) for card in list_of_cards]
-            
+    if value in high_cards:
+        return "High"
+    elif value in mid_cards:
+        return "Mid"
+    else:
+        return "Low"
 
-def convert_index_to_card(index):
-    """
-    Convert index to Card object
-    """
-    suit_idx = index % 4
-    value_idx = index // 4
-    
-    suit = list(suit_to_idx.keys())[list(suit_to_idx.values()).index(suit_idx)]
-    value = list(value_to_idx.keys())[list(value_to_idx.values()).index(value_idx)]
-    
-    return Card(suit, value)
-
-# we can just use cards instead of copy_of_cards
+# Function to determine remaining cards
 def set_of_remaining_cards(player, cards):
-    copy_of_cards = copy(cards)
-    to_remove = player.hand + player.played_cards + player.exposed_cards['North'] + player.exposed_cards['East'] + player.exposed_cards['South'] + player.exposed_cards['West']
-    for card in to_remove:
-        if card in copy_of_cards:
-            copy_of_cards.remove(card)
-    return list(copy_of_cards)
-
-def group_cards(seed, cards):
-    global number_of_groups
-    global suit_to_idx
-    copy_of_cards = copy(cards)
-    
-    # Set random seed for reproducibility
-    random.seed(seed)
-
-    # Shuffle the deck to ensure randomness
-    random.shuffle(copy_of_cards)
-    
-    # Calculate the size of each group
-    group_size = 52 // number_of_groups
-    
-    # Create groups
-    groups = {i: [] for i in range(0, number_of_groups)}
-    cards_to_group_indices = {}
-    
-    for card in copy_of_cards:
-        groups[suit_to_idx[card.suit]].append(card)
-        cards_to_group_indices[card] = suit_to_idx[card.suit]
-
-    # # Distribute cards into groups
-    # for i in range(number_of_groups):
-    #     group_cards = copy_of_cards[i * group_size: (i + 1) * group_size]
-    #     groups[i] = group_cards
-        
-    #     # Populate the reverse dictionary
-    #     for card in group_cards:
-    #         cards_to_group_indices[card] = i
-    
-    return groups, cards_to_group_indices
-
-
-def playing(player, deck):
-    global cards
-    global random_seeds
-    cards = deck.copyCards
-
-    if player.name == "North" or player.name == "South":
-        return NorthSouthStrategy(player, deck, random_seeds)
-    else:
-        return EastWestStrategy(player, deck, random_seeds)
-    
-def guessing(player, cards, round):
-    random_seed_index = len(player.played_cards) - 1
-    print(f"Random seed index in guessing is {random_seed_index}.")
-    number_of_cards_to_guess = 13 - round
-    assert(round == len(player.played_cards))
-
-    remaining_cards = set_of_remaining_cards(player, cards)
-    groups, cards_to_group_indices = group_cards(random_seeds[random_seed_index], cards)
-    partner_card = get_partner_exposed_card(player)
-    group_index_to_guess = opposite(cards_to_group_indices[partner_card])
-    guessed_group = groups[group_index_to_guess]
-    print({card for card in guessed_group if card in remaining_cards})
-    cards_to_guess = list({card for card in guessed_group if card in remaining_cards})
-    print(convert_list_of_cards_to_list_of_indices(cards_to_guess))
-    print(f"The number of cards of the predicted group to be guessed is {len(cards_to_guess)}")
-    if len(cards_to_guess) >= number_of_cards_to_guess:
-        return random.sample(cards_to_guess, number_of_cards_to_guess)
-    else:
-        print(f"The number of cards that can be guessed {len(list(set(remaining_cards) - set(cards_to_guess)))}")
-        print(f"len of cards to guess: {len(cards_to_guess)}")
-        print(f"len of remaining cards: {len(remaining_cards)}")
-        print(f"The number of cards that need to be additionally guessed {number_of_cards_to_guess - len(cards_to_guess)}")
-        random_remaining_cards = random.sample(list(set(remaining_cards) - set(cards_to_guess)), number_of_cards_to_guess - len(cards_to_guess))
-        union_list_of_cards = cards_to_guess + random_remaining_cards
-        return union_list_of_cards
-
-def get_partner_exposed_card(player):
-    return player.exposed_cards[PARTNERS[player.name]][-1]
-
-def NorthSouthStrategy(player, deck, random_seeds):
     """
-    Max First strategy
+    Determine the remaining cards in the deck by excluding played, exposed, and hand cards.
+    """
+    remaining_cards = copy(cards)
+    to_remove = player.hand + player.played_cards + player.exposed_cards['North'] + player.exposed_cards['East'] + player.exposed_cards['South'] + player.exposed_cards['West']
+    
+    for card in to_remove:
+        if card in remaining_cards:
+            remaining_cards.remove(card)
+    
+    return remaining_cards
+
+# New strategy logic for North/South players
+def NorthSouthStrategy(player, deck):
+    """
+    New strategy using suit pairing and value grouping.
+    Expose cards that inform about opposite suits and complement card values.
     """
     if not player.hand:
         return None
     
     random_seed_index = len(player.played_cards)
-    
-    print(f"Random seed index in playing is {random_seed_index}.")
 
-    groups, cards_to_group_indices = group_cards(random_seeds[random_seed_index], deck.copyCards)
+    # Group cards by their suits
+    suit_groups = {suit: [] for suit in ["Spades", "Hearts", "Clubs", "Diamonds"]}
+    for card in player.hand:
+        suit_groups[card.suit].append(card)
 
-    present_groups = {i: [] for i in range(0, len(groups) )}
+    # Prioritize playing cards from a suit if the opposite suit is present in the partner's exposed cards
+    partner_suit = get_opposite_suit(player.exposed_cards[PARTNERS[player.name]][-1].suit) if player.exposed_cards[PARTNERS[player.name]] else None
 
-    for i, card in enumerate(player.hand):
-        present_groups[cards_to_group_indices[card]].append(card)
+    if partner_suit and suit_groups[partner_suit]:
+        # Play a low card from the opposite suit pair
+        for card in suit_groups[partner_suit]:
+            if get_card_value_group(card.value) == "Low":
+                return player.hand.index(card)
 
-    largest_group_index = -1
-    largest_group_size = 1
-    smallest_opposite_group_size = 52
+    # If no pairing suit card is available, play a low-value card
+    for suit, cards in suit_groups.items():
+        for card in cards:
+            if get_card_value_group(card.value) == "Low":
+                return player.hand.index(card)
 
-    for group_index, group in present_groups.items():
-        print(f"Group {group_index}: {len(group)}")
-        if len(present_groups[opposite(group_index)]) > 0 and (len(group) >= largest_group_size or (len(group) == largest_group_size and len(present_groups[opposite(group_index)]) < smallest_opposite_group_size)):
-            largest_group_size = len(group)
-            largest_group_index = group_index
-            smallest_opposite_group_size = len(present_groups[opposite(group_index)])
+    # Default to playing a random card if no other conditions are met
+    return random.randint(0, len(player.hand) - 1)
 
-    if largest_group_index == -1:
-        # If there is no group that has a partner group, play a random card
-        return random.randint(0, len(player.hand) - 1)
-    
-    print(f"Largest group index: {largest_group_index}")
-    print(f"Opposite group index: {opposite(largest_group_index)}")
-    print(f"Size of largest group: {len(present_groups[largest_group_index])}")
-    print(f"Size of smallest opposite group: {len(present_groups[opposite(largest_group_index)])}")
-
-    assert(cards_to_group_indices[present_groups[largest_group_index][0]] == largest_group_index)
-
-    return player.hand.index(present_groups[opposite(largest_group_index)][0])
-
-def opposite(group_index):
-    if group_index % 2 == 0:
-        return group_index + 1
-    else:
-        return group_index - 1
-    
-
+# New strategy logic for East/West players (mirrors North/South)
 def EastWestStrategy(player, deck):
+    """
+    Mirrors the North/South strategy with the new suit pairing and value grouping logic.
+    """
     return NorthSouthStrategy(player, deck)
+
+# New guessing strategy based on pairing logic
+def guessing(player, cards, round):
+    """
+    Guess based on the new logic using suit pairing and value grouping.
+    Infer which suits and values are more likely based on exposed cards.
+    """
+    number_of_cards_to_guess = 13 - round
+    remaining_cards = set_of_remaining_cards(player, cards)
+
+    partner_exposed_cards = player.exposed_cards[PARTNERS[player.name]]
+
+    # Prioritize guessing cards in suits opposite to what the partner has exposed
+    partner_last_exposed = partner_exposed_cards[-1] if partner_exposed_cards else None
+    opposite_suit = get_opposite_suit(partner_last_exposed.suit) if partner_last_exposed else None
+
+    guessed_cards = [card for card in remaining_cards if card.suit == opposite_suit]
+
+    # Add mid-value cards if not enough guessed cards are available from the opposite suit
+    if len(guessed_cards) < number_of_cards_to_guess:
+        additional_cards = [card for card in remaining_cards if get_card_value_group(card.value) == "Mid"]
+        guessed_cards.extend(additional_cards)
+
+    if len(guessed_cards) >= number_of_cards_to_guess:
+        return random.sample(guessed_cards, number_of_cards_to_guess)
+    else:
+        remaining_cards_sample = random.sample(remaining_cards, number_of_cards_to_guess - len(guessed_cards))
+        return guessed_cards + remaining_cards_sample
+
+# Playing function to assign the strategy based on the player's position
+def playing(player, deck):
+    """
+    Applies the appropriate strategy (North/South or East/West) based on the player's position.
+    Implements the suit pairing and value grouping logic.
+    """
+    global cards
+    global random_seeds
+    cards = deck.copyCards
+
+    if player.name == "North" or player.name == "South":
+        # Use the new North/South strategy with pairing and value grouping
+        return NorthSouthStrategy(player, deck)
+    else:
+        # Use the new East/West strategy which mirrors the North/South strategy
+        return EastWestStrategy(player, deck)
