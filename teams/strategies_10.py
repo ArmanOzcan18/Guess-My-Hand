@@ -43,17 +43,25 @@ def guessing(player, cards, round):
 
     # Update available guesses and probabilities
     available_guesses = update_available_guesses(player, available_guesses, cards, round)
-    probabilities = update_probabilities(player, round, available_guesses, probabilities)
     
+    probabilities = update_probabilities(player, round, available_guesses, probabilities)
     # Set unavailable cards to zero probability
     probabilities[~available_guesses] = 0
+    
+    
 
     # print the number of zero entries in probabilities:
     # print(f"Number of non-zero entries in probabilities: {52 - np.count_nonzero(probabilities == 0)}")
 
-    # Return top guesses by probability
-    candidate_guesses = probabilities.argsort()[::-1][:13-round]
-    guesses = [card for card in cards if convert_card_to_index(card) in candidate_guesses]
+    if round == 0:
+        # Take the indices of all True values in available_guesses
+        available_guess_indices= np.where(available_guesses)[0]
+        middle = len(available_guess_indices) // 2
+        guesses = available_guess_indices[middle-6:middle+6]
+    else:
+        guesses = probabilities.argsort()[::-1][:13-round]
+        # print(f"Round {round} candidate guesses: {guesses}")
+    guesses = [card for card in cards if convert_card_to_index(card) in guesses]
     return guesses
 
 
@@ -97,9 +105,8 @@ def update_available_guesses(player, available_guesses, cards, round):
 
 
 def update_probabilities(player, round, available_guesses, probabilities):
-    """
-    Update probabilities by various strategies
-    """
+    #Update probabilities by various strategies
+
     # Set unavailable cards to zero probability
     probabilities[~available_guesses] = 0
 
@@ -153,6 +160,77 @@ def update_probabilities(player, round, available_guesses, probabilities):
 
     return probabilities
 
+"""def update_probabilities(player, round, available_guesses, probabilities):
+    # Update probabilities by various strategies
+    print(f'\nplayer: {player.name}\n')
+    probabilities[~available_guesses] = 0
+    partner_name = partner[player.name]
+    adj_numerators = np.zeros(NUM_ROUNDS - 1, dtype=int)
+    adj_denominators = np.zeros(NUM_ROUNDS - 1, dtype=int)
+
+    # Compute accuracy per round (starting in round 2) based on cVals and exposed cards
+    for i in range(round - 1):
+        print(f'round: {i+1}, available guesses: {np.where(available_guesses)}')
+        numerator = player.cVals[i]
+        denominator = NUM_ROUNDS - 1 - i
+        curr_guesses = [convert_card_to_index(card) for card in player.guesses[i]]
+        new_guesses = []
+        new_numerator = 0
+        new_denominator = 0
+        print(f'PRE: curr guesses: {curr_guesses}, numerator: {numerator}, denominator: {denominator}')
+
+        if i >= 1:
+            # Calculate accuracy of new guesses by backing up repeated previous guesses
+            prev_guesses = [convert_card_to_index(card) for card in player.guesses[i-1]]
+            new_guesses = list(set(curr_guesses) - set(prev_guesses))
+            print(f'prev guesses: {prev_guesses}, new guesses: {new_guesses}')
+
+            # Process new guesses only if there are repeated previous guesses
+            if len(new_guesses) != len(curr_guesses) and len(new_guesses) > 0:
+                new_numerator = max(numerator - adj_numerators[i-1], 0)
+                new_denominator = len(new_guesses)
+                print(f'new numerator: {new_numerator}, new denominator: {new_denominator}')
+                for guess in new_guesses:
+                    # Decrement denominator if card is not available (including partner card)
+                    if guess in np.where(~available_guesses)[0]:
+                        new_denominator -= 1
+                        denominator -= 1
+                    # Decrement numerator if partner card is exposed
+                    if convert_index_to_card(guess) in player.exposed_cards[partner_name]:
+                        new_numerator -= 1
+                        numerator -= 1
+                new_accuracy = new_numerator / new_denominator if new_denominator > 0 else 0
+                # Update probabilities based on new accuracy if still available
+                for guess in new_guesses:
+                    if available_guesses[guess] and probabilities[guess] > 0 and probabilities[guess] < 1:
+                        probabilities[guess] = new_accuracy
+
+        print(f'new numerator: {new_numerator}, new denominator: {new_denominator}')
+
+        # Update probabilities of old guesses or all new guesses if no repeated previous guesses
+        old_guesses = [guess for guess in curr_guesses if guess not in new_guesses]
+        guesses = old_guesses if old_guesses else curr_guesses
+        print(f'old guesses: {old_guesses}, guesses: {guesses}')
+        for guess in guesses:
+            # Decrement denominator if card is not available (including partner card)
+            if guess in np.where(~available_guesses)[0]:
+                denominator -= 1
+            # Decrement numerator if partner card is exposed
+            if convert_index_to_card(guess) in player.exposed_cards[partner_name]:
+                numerator -= 1
+
+        # Update adjusted numerators and denominators
+        adj_numerators[i] = numerator
+        adj_denominators[i] = denominator
+        old_numerator = numerator - new_numerator
+        old_denominator = denominator - new_denominator
+        accuracy = old_numerator / old_denominator if old_denominator > 0 else 0
+        print(f'POST: numerator: {numerator}, denominator: {denominator}, accuracy: {accuracy}')
+        
+        for guess in guesses:
+            if available_guesses[guess] and probabilities[guess] > 0 and probabilities[guess] < 1:
+                probabilities[guess] = accuracy
+    return probabilities"""
 
 def convert_card_to_index(card):
     """
@@ -195,6 +273,7 @@ seeds = list(range(1000))
 DECK_SIZE = 52
 OPENING_HAND_SIZE = 13
 PAR_PROBABILITY = 1/3
+NUM_ROUNDS = 13
 
 suit_to_idx = {"Diamonds": 0, "Clubs": 1, "Hearts": 2, "Spades": 3}
 value_to_idx = {
