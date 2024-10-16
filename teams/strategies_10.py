@@ -6,23 +6,23 @@ import numpy as np
 
 
 def playing(player, deck):
-    global seeds
+    #global seeds
     # Determine the random seed to use based on the number of cards already played
-    random_seed_index = len(player.played_cards)
+    #random_seed_index = len(player.played_cards)
     # print(f"Random seed index in playing is {random_seed_index}.")
-    random_seed = seeds[random_seed_index]
+    #random_seed = seeds[random_seed_index]
     # print(f"Playing: Random seed is: {random_seed}.")
 
     # Get the random mapping for the entire deck
-    card_mapping = randomize_card_mapping(copy(deck.copyCards), random_seed)
+    #card_mapping = randomize_card_mapping(copy(deck.copyCards), random_seed)
 
     # Find the card in the player's hand that has the maximum random mapping value
 
     # Find the card in the player's hand that has the maximum random mapping value
-    try:
+    """try:
         max_card = max(player.hand, key=lambda card: card_mapping[card])
     except KeyError as e:
-        print(f"\nKeyError: {e} - This card is not found in the card_mapping dictionary")
+        print(f"\nKeyError: {e} - This card is not found in the card_mapping dictionary")"""
 
     # set max card as the maximum index card in the player hand using convert_card_to_index
     if (len(player.played_cards) + 1) % 2 == 1:
@@ -84,11 +84,11 @@ def update_available_guesses(player, available_guesses, cards, round):
                 available_guesses[card_idx] = False
 
     for i in range(1, round+1):
-        random_seed_index = i - 1
+        # random_seed_index = i - 1
         # print(f"Random seed index in guessing is {random_seed_index}.")
-        random_seed = seeds[random_seed_index]
+        # random_seed = seeds[random_seed_index]
         # print(f"Random seed in guessing is {random_seed}.")
-        card_mapping = randomize_card_mapping(copy(cards), random_seed)
+        # card_mapping = randomize_card_mapping(copy(cards), random_seed)
         #print(f"Guessing: Round {i} random seed: {random_seed}")
         partner_card = player.exposed_cards[PARTNERS[player.name]][i-1]
         # removed_cards = [card for card in copy(cards) if card_mapping[card] > card_mapping[partner_card]]
