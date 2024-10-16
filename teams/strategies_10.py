@@ -53,7 +53,7 @@ def guessing(player, cards, round):
     # print the number of zero entries in probabilities:
     # print(f"Number of non-zero entries in probabilities: {52 - np.count_nonzero(probabilities == 0)}")
 
-    if round == 0:
+    if round == 1:
         # Take the indices of all True values in available_guesses
         available_guess_indices= np.where(available_guesses)[0]
         middle = len(available_guess_indices) // 2
