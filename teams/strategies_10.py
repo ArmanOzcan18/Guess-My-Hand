@@ -2,7 +2,7 @@ import numpy as np
 from CardGame import Card
 
 
-WrapAround = True
+WrapAround = False
 Debug = False
 
 def DPrint(*args, **kwargs):
