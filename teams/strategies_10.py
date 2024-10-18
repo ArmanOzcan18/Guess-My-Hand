@@ -3,6 +3,9 @@ from CardGame import Card
 
 
 WrapAround = True
+GuessFromMiddle = True
+UsePriorCVals = True
+Argmax = True
 Debug = False
 
 def DPrint(*args, **kwargs):
@@ -92,10 +95,13 @@ def guessing(player, cards, round):
 
     # Update available guesses and probabilities
     update_available_guesses(player, available_guesses, min_idx, max_idx)
-    update_probabilities(player, round, available_guesses, probabilities)
+    if UsePriorCVals:
+        update_probabilities(player, round, available_guesses, probabilities)
+    else:
+        update_probabilities_old(player, round, available_guesses, probabilities)
 
     # Return top guesses by probability
-    candidate_guesses = get_candidate_guesses(round, probabilities, min_idx, max_idx, use_argmax=True)
+    candidate_guesses = get_candidate_guesses(round, probabilities, min_idx, max_idx, use_argmax=Argmax)
     guesses = [card for card in cards if convert_card_to_index(card) in candidate_guesses]
     
     DPrint(f'probabilities: {probabilities}')
@@ -227,6 +233,39 @@ def update_probabilities(player, round, available_guesses, probabilities):
                 probabilities[guess] = accuracy
 
 
+def update_probabilities_old(player, round, available_guesses, probabilities):
+    """
+    Update probabilities by various strategies
+    """
+    # Set unavailable cards to zero probability
+    probabilities[~available_guesses] = 0
+
+    # Update probabilities based on previous rounds' guesses and cVals
+    partner_name = partner[player.name]
+    opponents_names = opponents[player.name]
+
+    for i in range(round - 1):
+        # Compute accuracy based on cVals and exposed cards
+        numerator = player.cVals[i]
+        denominator = NUM_ROUNDS - 1 - i
+        for card in player.guesses[i]:
+            # Decrement numerator and denominator if partner card is exposed
+            if card in player.exposed_cards[partner_name]:
+                numerator -= 1
+                denominator -= 1
+            # Decrement denominator if opponent card is exposed
+            if card in player.exposed_cards[opponents_names[0]] or \
+                card in player.exposed_cards[opponents_names[1]]:
+                denominator -= 1
+        accuracy = numerator / denominator if denominator > 0 else 0
+
+        # Update probabilities based on accuracy
+        for card in player.guesses[i]:
+            card_idx = convert_card_to_index(card)
+            if available_guesses[card_idx] and probabilities[card_idx] > 0 and probabilities[card_idx] < 1:
+                probabilities[card_idx] = accuracy
+
+
 def get_candidate_guesses(round, probabilities, min_idx, max_idx, use_argmax=True):
     """
     Get candidate guesses by max probability (argmax) or multinomial sampling (multinomial)
@@ -242,9 +281,10 @@ def get_candidate_guesses(round, probabilities, min_idx, max_idx, use_argmax=Tru
         DPrint(f'min_idx: {min_idx}, max_idx: {max_idx}, mean_idx: {mean_idx}')
 
         # Assign mean advantage to cards closer to mean_idx
-        indices = np.where(probabilities == PAR_PROBABILITY)[0]
-        for idx in indices:
-            probabilities[idx] += (min_to_mean - abs(idx - mean_idx)) / min_to_mean * MEAN_ADVANTAGE
+        if GuessFromMiddle:
+            indices = np.where(probabilities == PAR_PROBABILITY)[0]
+            for idx in indices:
+                probabilities[idx] += (min_to_mean - abs(idx - mean_idx)) / min_to_mean * MEAN_ADVANTAGE
 
         return probabilities.argsort()[::-1][:13-round]
 
